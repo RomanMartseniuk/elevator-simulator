@@ -38,24 +38,31 @@ export class Floor {
     this.container.removeChild(pers.sprite);
 
     this.people.forEach((p, index) => {
-      const targetX = 10 + index * 25; 
-      
+      const targetX = 10 + index * 25;
+
       p.Go(targetX, 200);
     });
 
     return pers;
+  }
 
+  getPersonByObject(person: Person): Person | null {
+    const index = this.people.indexOf(person);
+    if (index === -1) return null;
 
+    const pers = this.people.splice(index, 1)[0];
+    this.container.removeChild(pers.sprite);
+    return pers;
   }
 
   putPerson(pers: Person) {
     this.container.addChild(pers.sprite);
 
-    pers.sprite.x -=ELEVATOR_WIDTH;
+    pers.sprite.x -= ELEVATOR_WIDTH;
 
-    pers.Go(1000,1500,()=>{
+    pers.Go(1000, 1500, () => {
       this.container.removeChild(pers.sprite);
       pers.sprite.destroy();
-    })
+    });
   }
 }

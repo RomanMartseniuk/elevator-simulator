@@ -17,9 +17,9 @@ export class Elevator {
   direction: 1 | 0 | -1 = 0;
 
   private floorHeight: number;
-  private width: number
+  private width: number;
 
-  constructor(height: number,width: number, capacity: number) {
+  constructor(height: number, width: number, capacity: number) {
     this.capacity = capacity;
     this.places = capacity;
 
@@ -30,7 +30,7 @@ export class Elevator {
     this.people = [];
 
     this.floorHeight = height;
-    this.width=width
+    this.width = width;
   }
 
   private CreateSprite(height: number, width: number) {
@@ -59,7 +59,6 @@ export class Elevator {
     const elevator = this;
 
     function step() {
-
       if (elevator.currFloor === targetFloor) {
         elevator.direction = 0;
         elevator.CheckFloor(floors[targetFloor]);
@@ -109,22 +108,15 @@ export class Elevator {
   }
 
   CheckFloor(floor: Floor) {
-    if (floor.people.filter((p) => p.canEnter).length > 0) {
-      if (this.places !== 0) {
-        if (this.places === this.capacity) {
-          const pers = floor.getPerson(0);
-          pers && this.PutPerson(pers);
-          return;
-        }
+    const canEnterPeople = floor.people.filter((p) => p.canEnter);
 
-        if (
-          floor.people[0].direction === this.direction ||
-          this.direction === 0
-        ) {
-          const pers = floor.getPerson(0);
-          pers && this.PutPerson(pers);
-          return;
-        }
+    for (const p of canEnterPeople) {
+      if (this.places === 0) break;
+
+      // перевірка на напрямок
+      if (this.direction === 0 || p.direction === this.direction) {
+        const pers = floor.getPersonByObject(p); 
+        if (pers) this.PutPerson(pers);
       }
     }
   }
@@ -152,10 +144,10 @@ export class Elevator {
 
   GetPerson(pers: Person) {
     if (this.places < this.capacity) this.places++;
-    pers.sprite.y=0;
+    pers.sprite.y = 0;
     this.sprite.removeChild(pers.sprite);
     this.people = this.people.filter((p) => p !== pers);
-    
+
     floors[pers.targetFloor].putPerson(pers);
   }
 
