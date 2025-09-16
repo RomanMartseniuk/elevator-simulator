@@ -96,7 +96,7 @@ function SpawnPeople(callback: (arg:Elevator) => void, elevator:Elevator) {
   }
 
   function scheduleNextSpawn() {
-    const delay = 4000// + Math.random() * 6000; 
+    const delay = 4000 + Math.random() * 6000; 
     setTimeout(spawn, delay);
   }
 
