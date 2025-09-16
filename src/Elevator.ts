@@ -1,6 +1,8 @@
 import * as PIXI from "pixi.js";
 import { Person } from "./Person";
 import { createTween } from "./tween";
+import type { Floor } from "./Floor";
+import { floors } from "./main";
 
 export class Elevator {
   currFloor: number;
@@ -12,29 +14,30 @@ export class Elevator {
 
   sprite: PIXI.Container;
 
-  private floorHeight: number;
+  direction: 1 | 0 | -1 = 0;
 
-  constructor(height: number, capacity: number) {
+  private floorHeight: number;
+  private width: number
+
+  constructor(height: number,width: number, capacity: number) {
     this.capacity = capacity;
     this.places = capacity;
 
-    this.sprite = this.CreateSprite(height);
+    this.sprite = this.CreateSprite(height, width);
 
     this.currFloor = 0;
 
     this.people = [];
 
     this.floorHeight = height;
+    this.width=width
   }
 
-  private CreateSprite(height: number) {
+  private CreateSprite(height: number, width: number) {
     const container = new PIXI.Container();
 
-    container.pivot.y=height;
-    container.scale.y=-1;
-
     const rect = new PIXI.Graphics()
-      .rect(0, 0, 100, height)
+      .rect(0, 0, width, height)
       .stroke({ width: 2, color: 0x000000 });
 
     container.addChild(rect);
@@ -43,31 +46,133 @@ export class Elevator {
   }
 
   private Go(toY: number, duration = 1000, onComlpete?: () => void) {
-    createTween(this.sprite).to({ y: toY }, duration).onComplete(onComlpete).start();
+    createTween(this.sprite)
+      .to({ y: toY }, duration)
+      .onComplete(onComlpete)
+      .start();
   }
 
-  GoToFloor(targetFloor: number) {
-    const delayPerFloor = 500;
+  GoToFloor(TargetFloor: number) {
+    let targetFloor = TargetFloor;
+    const delayPerFloor = 800;
     const speed = 1000;
     const elevator = this;
 
     function step() {
-      if (elevator.currFloor === targetFloor) return; // базовий випадок
 
-      const direction = targetFloor > elevator.currFloor ? 1 : -1;
-      elevator.currFloor += direction;
+      if (elevator.currFloor === targetFloor) {
+        elevator.direction = 0;
+        elevator.CheckFloor(floors[targetFloor]);
 
+        const people = elevator.people.filter(
+          (p) => p.targetFloor === elevator.currFloor
+        );
+        people.forEach((p) => elevator.GetPerson(p));
+
+        const targetFloors = elevator.people.map((p) => p.targetFloor);
+        if (targetFloors.length > 0) {
+          targetFloor =
+            elevator.direction >= 0
+              ? Math.max(...targetFloors)
+              : Math.min(...targetFloors);
+          elevator.direction = targetFloor > elevator.currFloor ? 1 : -1;
+          setTimeout(step, delayPerFloor);
+        } else {
+          const nearest = elevator.GetNearestFloorWithPeople();
+          if (nearest !== -1 && nearest !== elevator.currFloor) {
+            targetFloor = nearest;
+            elevator.direction = targetFloor > elevator.currFloor ? 1 : -1;
+            setTimeout(step, delayPerFloor);
+          }
+        }
+
+        return;
+      }
+
+      elevator.direction = targetFloor > elevator.currFloor ? 1 : -1;
+      elevator.currFloor += elevator.direction;
       const toY = elevator.currFloor * elevator.floorHeight;
 
-      // рухаємо ліфт
-      elevator.Go(toY, speed); // 1000 = швидкість руху tween
+      elevator.Go(toY, speed, () => {
+        elevator.CheckFloor(floors[elevator.currFloor]);
 
-      // чекаємо завершення tween + паузу, потім викликаємо наступний крок
-      setTimeout(() => {
-        step();
-      }, speed + delayPerFloor);
+        const people = elevator.people.filter(
+          (p) => p.targetFloor === elevator.currFloor
+        );
+        people.forEach((p) => elevator.GetPerson(p));
+
+        setTimeout(step, delayPerFloor);
+      });
     }
 
     step();
+  }
+
+  CheckFloor(floor: Floor) {
+    if (floor.people.filter((p) => p.canEnter).length > 0) {
+      if (this.places !== 0) {
+        if (this.places === this.capacity) {
+          const pers = floor.getPerson(0);
+          pers && this.PutPerson(pers);
+          return;
+        }
+
+        if (
+          floor.people[0].direction === this.direction ||
+          this.direction === 0
+        ) {
+          const pers = floor.getPerson(0);
+          pers && this.PutPerson(pers);
+          return;
+        }
+      }
+    }
+  }
+
+  PutPerson(person: Person) {
+    if (this.people.length >= this.capacity) return;
+
+    this.people.push(person);
+    this.places--;
+
+    this.sprite.addChild(person.sprite);
+
+    person.sprite.x += this.width;
+
+    const index = this.people.length - 1;
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const spacingX = 30;
+    const spacingY = 40;
+
+    person.Go(col * spacingX + 10, 200, () => {
+      person.sprite.y = spacingY * row;
+    });
+  }
+
+  GetPerson(pers: Person) {
+    if (this.places < this.capacity) this.places++;
+    pers.sprite.y=0;
+    this.sprite.removeChild(pers.sprite);
+    this.people = this.people.filter((p) => p !== pers);
+    
+    floors[pers.targetFloor].putPerson(pers);
+  }
+
+  GetNearestFloorWithPeople() {
+    let nearestIndex = -1;
+    let minDistance = Infinity;
+
+    floors.forEach((floor, index) => {
+      if (floor.people.length > 0) {
+        const distance = Math.abs(this.currFloor - index);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestIndex = index;
+        }
+      }
+    });
+
+    return nearestIndex;
   }
 }

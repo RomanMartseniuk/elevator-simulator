@@ -11,11 +11,11 @@ const WIDTH = 800;
 const HEIGHT = 600;
 
 const FLOORS = 6;
-const CAPACITY = 3;
+const CAPACITY = 4;
 
-const ELEVATOR_WIDTH = 100;
+export const ELEVATOR_WIDTH = 100;
 
-const floors: Floor[] = [];
+export const floors: Floor[] = [];
 
 (async () => {
   await app.init({
@@ -49,36 +49,23 @@ function Init() {
     scene.addChild(floor.container);
   }
 
-  SpawnPeople();
-
-  const elevator = new Elevator(floorHeight, CAPACITY);
-
-  scene.addChild(elevator.sprite);
-
-  // ! TEST FORM 
-  const form = document.getElementById("floorForm") as HTMLFormElement | null;
-  const input = document.getElementById(
-    "floorInput"
-  ) as HTMLInputElement | null;
-
-  form?.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    if (!input) return;
-
-    const floor = parseInt(input.value, 10);
-    if (!isNaN(floor) && floor < floors.length && floor >= 0) {
-      elevator.GoToFloor(floor);
-    }
-  });
   
+  const elevator = new Elevator(floorHeight, ELEVATOR_WIDTH, CAPACITY);
+
+  (window as any)["ELEVATOR"] = elevator;
+  
+  scene.addChild(elevator.sprite);
+  
+  SpawnPeople(GetPeople, elevator);
 }
 
-function SpawnPeople() {
-  setInterval(() => {
+function SpawnPeople(callback: (arg:Elevator) => void, elevator:Elevator) {
+  let firstSpawned = false;
+  function spawn() {
     const person = new Person(FLOORS);
 
     if (!floors[person.spawnFloor] || !floors[person.targetFloor]) {
+      scheduleNextSpawn();
       return;
     }
 
@@ -87,6 +74,40 @@ function SpawnPeople() {
 
     person.sprite.x = WIDTH + 50;
 
-    person.Go(10 + (floors[person.spawnFloor].people.length - 1) * 25);
-  }, 4000);
+    person.Go(
+      10 + (floors[person.spawnFloor].people.length - 1) * 25,
+      2000,
+      () => {
+        person.canEnter = true;
+
+        if (!firstSpawned) {
+          firstSpawned = true;
+
+          callback(elevator);
+        }
+
+        if (elevator.direction === 0 && elevator.places === elevator.capacity) {
+          elevator.GoToFloor(person.spawnFloor);
+        }
+      }
+    );
+
+    scheduleNextSpawn();
+  }
+
+  function scheduleNextSpawn() {
+    const delay = 4000// + Math.random() * 6000; 
+    setTimeout(spawn, delay);
+  }
+
+  scheduleNextSpawn();
+}
+
+function GetPeople(elevator: Elevator) {
+  let floor: number | null = elevator.GetNearestFloorWithPeople();
+
+  if (floor) {
+    elevator.GoToFloor(floor);
+  }
+
 }

@@ -5,11 +5,10 @@ export class Person {
   spawnFloor: number;
   targetFloor: number;
 
-  direction: boolean; // 1-up | 0-down
+  direction: 1 | -1;
   canEnter: boolean;
 
   sprite: PIXI.Container;
-
 
   constructor(floors: number) {
     this.spawnFloor = Math.floor(Math.random() * floors);
@@ -17,7 +16,7 @@ export class Person {
       this.targetFloor = Math.floor(Math.random() * floors);
     } while (this.targetFloor === this.spawnFloor);
 
-    this.direction = this.targetFloor > this.spawnFloor;
+    this.direction = this.targetFloor > this.spawnFloor ? 1 : -1;
     this.canEnter = false;
 
     this.sprite = this.CreateSprite();
@@ -26,7 +25,7 @@ export class Person {
   private CreateSprite() {
     const container = new PIXI.Container();
 
-    const strokeColor = this.direction ? 0x427ef5 : 0x48f542;
+    const strokeColor = this.direction > 0 ? 0x427ef5 : 0x48f542;
 
     const rect = new PIXI.Graphics()
       .rect(0, 0, 20, 40)
@@ -34,18 +33,21 @@ export class Person {
 
     const style = new PIXI.TextStyle({ fontSize: 14 });
 
-    const text = new PIXI.Text({text: this.targetFloor + 1, style});
+    const text = new PIXI.Text({ text: this.targetFloor + 1, style });
 
     container.addChild(rect);
     container.addChild(text);
 
     container.scale.y = -1;
-    container.pivot.y=40;
+    container.pivot.y = 40;
 
     return container;
   }
 
-  Go(toX: number, duration = 2000) {
-    createTween(this.sprite).to({x: toX}, duration).start();
+  Go(toX: number, duration = 2000, onComplete?: () => void) {
+    createTween(this.sprite)
+      .to({ x: toX }, duration)
+      .onComplete(onComplete)
+      .start();
   }
 }

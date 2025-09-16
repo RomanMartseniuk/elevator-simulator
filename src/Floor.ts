@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import { Person } from "./Person";
+import { ELEVATOR_WIDTH } from "./main";
 
 export class Floor {
   people: Person[];
@@ -17,7 +18,7 @@ export class Floor {
 
     const rect = new PIXI.Graphics()
       .rect(0, 0, width, height)
-      .fill({ color: 0xff0000 }); // червоний для тесту
+      .fill({ color: 0xe2e2e2 });
 
     const floor = new PIXI.Graphics()
       .rect(0, 0, width, 2)
@@ -27,5 +28,34 @@ export class Floor {
     container.addChild(floor);
 
     return container;
+  }
+
+  getPerson(i: number) {
+    const pers = this.people[i];
+    if (!pers) return null;
+
+    this.people.splice(i, 1);
+    this.container.removeChild(pers.sprite);
+
+    this.people.forEach((p, index) => {
+      const targetX = 10 + index * 25; 
+      
+      p.Go(targetX, 200);
+    });
+
+    return pers;
+
+
+  }
+
+  putPerson(pers: Person) {
+    this.container.addChild(pers.sprite);
+
+    pers.sprite.x -=ELEVATOR_WIDTH;
+
+    pers.Go(1000,1500,()=>{
+      this.container.removeChild(pers.sprite);
+      pers.sprite.destroy();
+    })
   }
 }
